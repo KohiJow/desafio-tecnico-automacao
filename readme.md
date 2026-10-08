@@ -7,7 +7,9 @@ primeira feita nas duas ferramentas, para comparar a abordagem de cada uma.
 
 **1. Busca no Yahoo.** Abrir o Yahoo BR, pesquisar um termo, clicar na sugestao
 e validar que a busca realmente aconteceu: a URL muda para a pagina de
-resultados e o termo aparece nos titulos dos resultados.
+resultados e o termo aparece nos titulos dos resultados. O termo fica numa
+constante no topo de cada arquivo (`TERMO`), porque as tres validacoes dependem
+dele.
 
 **2. Termos de Uso da UOL.** Acessar a pagina de termos e extrair a data da
 ultima atualizacao. O dado nao esta no texto visivel: vem do `dateModified`
@@ -59,6 +61,11 @@ adiante se ele nao aparecer, em vez de assumir que o aviso sempre existe.
 **Data da UOL.** Em vez de depender de um seletor de tela, o teste espera o
 bloco de dados estruturados carregar e le o campo `dateModified`, que e a fonte
 real do dado.
+
+**Comparacao de texto sem depender de maiuscula.** O titulo do resultado vem do
+Yahoo com a capitalizacao que ele quiser, entao a comparacao e por expressao
+regular com flag de ignorar caso, nos dois lados. Comparar texto ja passado por
+`lower()` contra uma string com maiuscula e uma assercao que nunca passa.
 
 **Timeouts do Cypress.** Ficam em `cypress-e2e/cypress.config.js`. O padrao de 4s
 e curto para site de terceiro, por isso o comando padrao usa 10s e o load da
