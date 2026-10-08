@@ -4,8 +4,10 @@
   "private": true,
   "description": "Testes E2E em Cypress do desafio tecnico de automacao",
   "scripts": {
+    "test": "cypress run",
     "cy:open": "cypress open",
-    "cy:run": "cypress run"
+    "cy:run": "cypress run",
+    "cy:run:ci": "cypress run --reporter junit --reporter-options mochaFile=cypress/results/junit-[hash].xml"
   },
   "devDependencies": {
     "cypress": "^15.9.0"
