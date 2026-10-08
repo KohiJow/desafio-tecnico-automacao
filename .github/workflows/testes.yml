@@ -1,0 +1,63 @@
+name: testes e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    name: playwright (python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playwright-e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: playwright-e2e/requirements.txt
+
+      - name: instala dependencias
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      # Busca em site externo oscila: cada teste que falhar e refeito ate duas vezes
+      - name: roda a suite
+        run: pytest --reruns 2 --reruns-delay 5
+
+      - name: publica o relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-playwright
+          path: playwright-e2e/reports/
+          if-no-files-found: ignore
+
+  cypress:
+    name: cypress
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # O retry fica no cypress.config.js (retries.runMode)
+      - name: roda a suite
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: cypress-e2e
+          command: npm run cy:run:ci
+
+      - name: publica relatorio e screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-cypress
+          path: |
+            cypress-e2e/cypress/results/
+            cypress-e2e/cypress/screenshots/
+          if-no-files-found: ignore
