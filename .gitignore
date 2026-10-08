@@ -14,12 +14,14 @@ venv/
 playwright-report/
 test-results/
 recordings/
+reports/
 
 # Node / Cypress
 node_modules/
 cypress/screenshots/
 cypress/videos/
 cypress/downloads/
+cypress/results/
 
 # IDEs
 .vscode/
