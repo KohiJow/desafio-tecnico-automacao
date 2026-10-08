@@ -1,109 +1,53 @@
-# Testes Automatizados - Pacto Soluções
+# Desafio tecnico: testes E2E em Playwright e Cypress
 
-Testes E2E em **Playwright** (Python) e **Cypress** (JavaScript) para validação de busca e termos de uso.
+Entrega do desafio de automacao de testes da Pacto Solucoes. Duas atividades,
+resolvidas nas duas ferramentas, para comparar a abordagem de cada uma.
 
-## Requisitos
-- Python 3.12+
-- Node.js 18+
+## As atividades
 
-## Atividades
+**1. Busca no Yahoo.** Abrir o Yahoo BR, pesquisar por "Pacto Solucoes", clicar
+na sugestao e validar que a busca realmente aconteceu: a URL muda para a pagina
+de resultados e o termo aparece na pagina.
 
-### Atividade 1: Busca no Yahoo
-Valida busca por "Pacto Soluções" no Yahoo BR
-- Verifica resultados da busca
-- Valida URL de resultados
-- Confirma presença do termo
+**2. Termos de Uso da UOL.** Acessar a pagina de termos e extrair a data da
+ultima atualizacao. O dado nao esta no texto visivel: vem do `dateModified`
+dentro de um bloco de dados estruturados, entao o teste le o DOM por JavaScript.
 
-### Atividade 2: Termos de Uso UOL
-Captura data de última atualização dos Termos de Uso da UOL
-- Acessa página de termos
-- Extrai data do campo `dateModified`
-- Exibe data formatada
+## Estrutura
 
-## Setup Playwright
+```
+playwright/
+  test_busca_yahoo.py     atividade 1
+  test_termos_uol.py      atividade 2
+cypress-e2e/
+  cypress/e2e/busca-yahoo.cy.js   atividade 1 em Cypress
+```
+
+## Rodando o Playwright
+
 ```bash
-# Instalar dependências
 pip install playwright pytest-playwright
-
-# Instalar navegadores
 playwright install
+pytest playwright/ -v
 ```
 
-## Rodar Playwright
+Para ver o navegador abrindo: `pytest playwright/ -v --headed`
+
+## Rodando o Cypress
+
 ```bash
-# Executar todos os testes
-pytest -v -s
-
-# Executar teste específico do Yahoo
-pytest -v -s test_yahoo.py
-
-# Executar teste específico da UOL
-pytest -v -s test_uol_playwright.py
-
-# Modo headed (visualizar navegador)
-pytest -v -s --headed --browser chromium
+cd cypress-e2e
+npm install
+npx cypress open     # modo interativo
+npx cypress run      # modo headless
 ```
 
-## Setup Cypress
-```bash
-# Inicializar projeto Node
-npm init -y
+## Notas sobre os testes
 
-# Instalar Cypress
-npm install cypress --save-dev
-```
+O Yahoo mostra um modal de privacidade de forma intermitente, dependendo de
+regiao e cookies. O teste em Playwright trata isso sem quebrar: tenta fechar o
+modal e segue adiante se ele nao aparecer.
 
-## Rodar Cypress
-```bash
-# Abrir interface gráfica
-npx cypress open
-
-# Executar via linha de comando
-npx cypress run
-
-# Executar teste específico do Yahoo
-npx cypress run --spec "cypress/e2e/yahoo.cy.js"
-
-# Executar teste específico da UOL
-npx cypress run --spec "cypress/e2e/uol.cy.js"
-```
-
-## Estrutura do Projeto
-```
-Playwright_2/
-├── test_yahoo.py              # Teste Yahoo - Playwright
-├── test_uol_playwright.py     # Teste UOL - Playwright
-├── cypress/
-│   └── e2e/
-│       ├── yahoo.cy.js        # Teste Yahoo - Cypress
-│       └── uol.cy.js          # Teste UOL - Cypress
-├── cypress.config.js          # Configuração Cypress
-└── README.md                  # Este arquivo
-```
-
-## Resultados Esperados
-
-### Teste Yahoo
-```
-Validando busca por "Pacto Soluções"
-URL: https://br.search.yahoo.com/...
-Resultados encontrados: OK
-```
-
-### Teste UOL
-```
-============================================================
-DATA DE ATUALIZACAO DOS TERMOS DE USO DA UOL
-============================================================
-Data encontrada: 2025-03-17T17:20:49-03:00
-============================================================
-```
-
-## Troubleshooting
-
-### Timeout no teste da UOL
-Se o teste falhar com timeout, execute em modo headed:
-```bash
-pytest -v -s test_uol_playwright.py --headed
-```
-
+Na atividade 2 a data nao esta renderizada na tela. Em vez de depender de um
+seletor fragil, o teste busca o campo `dateModified` nos scripts da pagina, que
+e a fonte real do dado.
