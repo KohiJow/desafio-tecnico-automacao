@@ -1,4 +1,12 @@
 {
+  "name": "desafio-tecnico-automacao-cypress",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes E2E em Cypress do desafio tecnico de automacao",
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:run": "cypress run"
+  },
   "devDependencies": {
     "cypress": "^15.9.0"
   }
