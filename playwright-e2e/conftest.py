@@ -1,11 +1,25 @@
 import pytest
-from playwright.sync_api import expect
+from playwright.sync_api import Browser, expect
 
 import config
 
 
+def _user_agent_sem_marca_headless(browser: Browser) -> str:
+    """
+    O Yahoo responde HTTP 500 com corpo vazio quando o user agent traz
+    "HeadlessChrome". Le o user agent real do navegador e troca so essa marca,
+    mantendo versao e sistema coerentes com o binario que esta rodando.
+    """
+    pagina = browser.new_page()
+    try:
+        user_agent = pagina.evaluate("navigator.userAgent")
+    finally:
+        pagina.close()
+    return user_agent.replace("HeadlessChrome/", "Chrome/")
+
+
 @pytest.fixture(scope="session")
-def browser_context_args(browser_context_args):
+def browser_context_args(browser_context_args, browser: Browser):
     """
     Yahoo e UOL respondem conforme regiao e idioma do navegador.
     Fixar locale e fuso deixa o resultado do teste igual em qualquer maquina.
@@ -14,6 +28,7 @@ def browser_context_args(browser_context_args):
         **browser_context_args,
         "locale": config.LOCALE,
         "timezone_id": config.TIMEZONE,
+        "user_agent": _user_agent_sem_marca_headless(browser),
     }
 
 
