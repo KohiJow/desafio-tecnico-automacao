@@ -149,7 +149,11 @@ terceiro.
 de uma execucao para outra. No CI o pytest roda com `--reruns 2 --reruns-delay 5`
 (plugin `pytest-rerunfailures`) e o Cypress com `retries.runMode = 2`. Fora do
 CI o Playwright roda sem retry por padrao, para a oscilacao aparecer, e no
-`cypress open` o retry e zero.
+`cypress open` o retry e zero. Quando o Yahoo recebe buscas demais em
+sequencia (varios runs seguidos no CI, por exemplo) ele devolve uma pagina de
+"problemas temporarios" no lugar dos resultados; as duas suites reconhecem
+essa pagina e falham com uma mensagem que diz isso, para a falha nao parecer
+seletor quebrado.
 
 ## CI
 

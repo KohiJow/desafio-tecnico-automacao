@@ -59,10 +59,20 @@ class YahooResultadosPage:
         self.page = page
         self.resultados = page.locator("#web div.algo")
         self.titulos = self.resultados.locator("h3.title")
+        # Pagina que o Yahoo devolve no lugar dos resultados quando recebe buscas
+        # demais em sequencia: "Ocorreram problemas temporarios na busca...".
+        self.aviso_problema_temporario = page.get_by_text(
+            re.compile("problemas tempor", re.IGNORECASE)
+        ).first
 
     def esperar_resultados_de(self, termo: str) -> "YahooResultadosPage":
         self.page.wait_for_url(re.compile(r"[?&]p=" + re.escape(termo), re.IGNORECASE))
-        expect(self.resultados.first).to_be_visible()
+        expect(self.resultados.first.or_(self.aviso_problema_temporario)).to_be_visible()
+        if self.aviso_problema_temporario.is_visible():
+            raise AssertionError(
+                "O Yahoo devolveu a pagina de problemas temporarios em vez dos resultados: "
+                "oscilacao do site, nao seletor quebrado"
+            )
         return self
 
     def textos_dos_titulos(self) -> List[str]:
