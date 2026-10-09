@@ -10,6 +10,8 @@ jobs:
   playwright:
     name: playwright (python)
     runs-on: ubuntu-latest
+    # Site externo pode travar a resposta: o job nao fica pendurado esperando
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: playwright-e2e
@@ -42,6 +44,7 @@ jobs:
   cypress:
     name: cypress
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
