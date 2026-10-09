@@ -17,5 +17,5 @@ TIMEZONE = "America/Sao_Paulo"
 # Timeouts em milissegundos. Sites de terceiro respondem mais devagar que
 # uma aplicacao local, por isso os valores sao maiores que o padrao do Playwright.
 TIMEOUT_ACAO = 10_000  # expect(), click, fill
-TIMEOUT_NAVEGACAO = 30_000  # goto, wait_for_url, wait_for_function
+TIMEOUT_NAVEGACAO = 30_000  # goto, wait_for_url e a espera pelo JSON-LD da UOL
 TIMEOUT_AVISO = 5_000  # aviso de privacidade do Yahoo, que nem sempre aparece
