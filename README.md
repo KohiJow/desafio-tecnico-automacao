@@ -158,7 +158,11 @@ seletor quebrado.
 ## CI
 
 `.github/workflows/testes.yml` roda dois jobs independentes a cada push na
-`main`, em pull request e por disparo manual: um instala o Chromium do
+`main`, em pull request e por disparo manual. Commit que so mexe em texto
+(`*.md` e `docs/`) nao dispara os testes, e um push novo cancela o run anterior
+do mesmo ramo: cada execucao faz buscas reais, e uma sequencia de pushes
+seguidos ja foi o bastante para o Yahoo devolver a pagina de "problemas
+temporarios" e deixar dois runs vermelhos sem nenhum defeito no codigo. Um job instala o Chromium do
 Playwright e roda o `pytest` com retries; o outro usa a action oficial do
 Cypress e roda `npm run cy:run:ci`. Os dois publicam artefatos: o relatorio
 HTML do pytest e o JUnit do Cypress com os screenshots de falha. Cada job tem

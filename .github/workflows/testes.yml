@@ -3,8 +3,17 @@ name: testes e2e
 on:
   push:
     branches: [main]
+    # commit so de texto nao muda o comportamento dos testes; rodar mesmo assim
+    # gasta busca no Yahoo, que limita quem busca demais em sequencia
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "docs/**"]
   workflow_dispatch:
+
+# push novo cancela o run anterior do mesmo ramo em vez de empilhar buscas
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   playwright:
