@@ -21,7 +21,7 @@ JavaScript. Essa atividade so existe em Playwright.
 
 ```
 playwright-e2e/
-  config.py                        URLs, locale, fuso e timeouts: tudo que e ambiente
+  config.py                        URLs, navegador, locale, fuso e timeouts: tudo que e ambiente
   conftest.py                      aplica o config ao navegador e ao expect
   pytest.ini                       pasta dos testes e relatorio HTML
   requirements.txt
@@ -91,9 +91,9 @@ encadear. Quando o Yahoo mudar o layout, o ajuste fica num unico lugar por suite
 
 ## Decisoes de teste
 
-**Configuracao num lugar so.** No Playwright, `config.py` guarda URLs, locale,
-fuso e timeouts; o `conftest.py` aplica tudo ao contexto do navegador, a cada
-pagina e ao `expect()`. No Cypress, `cypress.config.js` guarda `baseUrl`,
+**Configuracao num lugar so.** No Playwright, `config.py` guarda URLs, canal
+do navegador, locale, fuso e timeouts; o `conftest.py` aplica tudo ao
+navegador, ao contexto, a cada pagina e ao `expect()`. No Cypress, `cypress.config.js` guarda `baseUrl`,
 timeouts e retries. Nenhum teste tem URL ou numero de timeout embutido.
 
 **Sem sleep fixo.** Nenhum teste usa espera por tempo. No Playwright a espera e
@@ -101,37 +101,46 @@ por condicao (`expect`, `wait_for_url`, `wait_for_function`); no Cypress e o
 retry do proprio `cy.get` com `should`. Teste que dorme um numero fixo de
 segundos ou falha sem motivo em maquina lenta, ou gasta tempo de graca.
 
-**User agent no headless.** O Yahoo responde HTTP 500 com corpo vazio quando o
-user agent traz `HeadlessChrome`, que e o padrao do Chromium headless. Sem
-tratar isso o teste em Playwright nem passa do `page.goto`. O `conftest.py` le
-o user agent real do navegador e troca so essa marca por `Chrome`, mantendo
-versao e sistema coerentes com o binario em uso. O Cypress, rodando no
-Electron, nao sofre esse bloqueio.
+**Navegador headless.** Dois bloqueios aparecem so quando o Chromium roda sem
+tela. O Yahoo responde HTTP 500 com corpo vazio quando o user agent traz
+`HeadlessChrome`; sem tratar isso o teste nem passa do `page.goto`. O
+`conftest.py` le o user agent real do navegador e troca so essa marca por
+`Chrome`, mantendo versao e sistema coerentes com o binario em uso. A UOL
+responde 403 "Access Denied" ao headless shell, o Chromium reduzido que o
+Playwright abre por padrao, mesmo com o user agent trocado: os client hints
+(`sec-ch-ua`) desse binario continuam anunciando `HeadlessChrome`. Por isso a
+suite abre o Chromium completo em modo headless novo (`CHROMIUM_CHANNEL` em
+`config.py`), cujos client hints sao os mesmos do modo com tela. Com as duas
+medidas os dois testes passam headless, inclusive de um servidor. O Cypress,
+rodando no Electron, nao sofre o bloqueio do Yahoo; a UOL tambem o recusa.
 
 **Aviso de privacidade do Yahoo.** Ele aparece de forma intermitente, conforme
 regiao e cookies, e vem num iframe de outro dominio (`guce.yahoo.com`): um
 locator da pagina principal nunca encontra o botao OK. O page object usa
 `frame_locator`, espera o botao por ate 5 segundos e segue em frente se ele nao
-vier. No Cypress o aviso nao cobre o campo de busca nem as sugestoes, entao o
-teste nao precisa fecha-lo.
+vier. No Cypress o aviso nao cobre o campo de busca nem as primeiras
+sugestoes, e o teste clica na primeira que contem o termo, entao nao precisa
+fecha-lo.
 
 **Data da UOL.** Em vez de depender de um seletor de tela, o page object espera
 o bloco de dados estruturados carregar e le o campo `dateModified`, que e a
-fonte real do dado.
+fonte real do dado. Como o dado vem do HTML, o `goto` espera so o
+`domcontentloaded`: a pagina carrega muitos anuncios e esperar o load completo
+so deixa o teste lento e sujeito a timeout.
 
-**Bloqueio de IP da UOL.** A pagina de termos responde 403 "Access Denied" para
-IP de datacenter (servidor, CI), com qualquer user agent. O teste trata esse
-caso de forma explicita: com status 403 ele e marcado como pulado, com o motivo
-no relatorio, porque isso e indisponibilidade do ambiente e nao defeito da
-pagina. Qualquer outro status diferente de 200 falha normalmente. De uma
-maquina local o teste roda de ponta a ponta.
+**403 da UOL.** Se a UOL ainda recusar o acesso (navegador que ela reconheca
+como automatizado, rede bloqueada), o teste trata o caso de forma explicita:
+com status 403 ele e marcado como pulado, com o motivo no relatorio, porque
+isso e indisponibilidade do ambiente e nao defeito da pagina. Qualquer outro
+status diferente de 200 falha normalmente.
 
 **Comparacao de texto sem depender de maiuscula.** O titulo do resultado vem do
 Yahoo com a capitalizacao que ele quiser, entao a comparacao e por expressao
 regular com flag de ignorar caso, nas duas suites.
 
-**Timeouts.** Playwright: 10s para acao e `expect`, 30s para navegacao, 5s para
-o aviso de privacidade, todos em `config.py`. Cypress: 10s por comando e 60s
+**Timeouts.** Playwright: 10s para acao e `expect`, 30s para navegacao e para
+a espera pelo JSON-LD da UOL, 5s para o aviso de privacidade, todos em
+`config.py`. Cypress: 10s por comando e 60s
 para load da pagina, em `cypress.config.js`. O padrao das ferramentas (5s e 4s)
 e curto para site de terceiro.
 
@@ -147,13 +156,15 @@ CI o Playwright roda sem retry por padrao, para a oscilacao aparecer, e no
 `main`, em pull request e por disparo manual: um instala o Chromium do
 Playwright e roda o `pytest` com retries; o outro usa a action oficial do
 Cypress e roda `npm run cy:run:ci`. Os dois publicam artefatos: o relatorio
-HTML do pytest e o JUnit do Cypress com os screenshots de falha. Como as
+HTML do pytest e o JUnit do Cypress com os screenshots de falha. Cada job tem
+limite de 15 minutos, para site travado nao deixar o run pendurado. Como as
 suites batem em site real, uma execucao vermelha pode ser oscilacao do site: o
-retry reduz isso, nao elimina. O runner do GitHub tambem e IP de datacenter,
-entao o teste da UOL tende a aparecer como pulado la.
+retry reduz isso, nao elimina. No runner do GitHub os dois testes do Playwright
+passam, inclusive o da UOL, que com o headless shell era pulado por 403.
 
 ## Limitacoes conhecidas
 
 Os dois testes batem em sites reais, sem mock. Mudanca de layout do Yahoo ou da
 UOL quebra os seletores, que ficam concentrados em `pages/`. A atividade 2 so
-existe em Playwright. A UOL bloqueia IP de datacenter, como descrito acima.
+existe em Playwright: a UOL recusa o Electron do Cypress com 403. Os bloqueios
+a navegador headless e o tratamento do 403 estao descritos acima.
