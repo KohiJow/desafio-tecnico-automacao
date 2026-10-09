@@ -1,8 +1,9 @@
 import re
 
+import pytest
 from playwright.sync_api import Page, expect
 
-from pages.yahoo import YahooBuscaPage
+from pages.yahoo import YahooBuscaPage, YahooLimitouBuscas
 
 # termo da busca em minusculo: a assercao da URL compara com p=playwright
 TERMO = "playwright"
@@ -11,7 +12,12 @@ TERMO = "playwright"
 def test_busca_no_yahoo_pela_sugestao(page: Page):
     busca = YahooBuscaPage(page).abrir()
 
-    resultados = busca.buscar_pela_sugestao(TERMO).esperar_resultados_de(TERMO)
+    try:
+        resultados = busca.buscar_pela_sugestao(TERMO).esperar_resultados_de(TERMO)
+    except YahooLimitouBuscas as limite:
+        # Mesmo tratamento do 403 da UOL: bloqueio do site, registrado como pulado
+        # com o motivo no relatorio, em vez de uma falha que parece defeito.
+        pytest.skip(str(limite))
 
     # A busca aconteceu: URL e titulo da aba sao os da pagina de resultados do termo
     expect(page).to_have_url(re.compile(r"[?&]p=" + TERMO, re.IGNORECASE))

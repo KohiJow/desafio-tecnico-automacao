@@ -14,16 +14,19 @@ export class YahooResultadosPage {
     return this
   }
 
+  // Pagina que o Yahoo devolve no lugar dos resultados quando limita as buscas
+  // de um IP (comum nos runners compartilhados do GitHub): "Ocorreram problemas
+  // temporarios na busca de paginas da Web". Quem chama decide o que fazer.
+  seLimitado(acao) {
+    cy.url().should('match', /[?&]p=/)
+    cy.get('body').then(($body) => {
+      if (/problemas tempor/i.test($body.text())) acao()
+    })
+    return this
+  }
+
   deveTerResultadoCitando(termo) {
     const padrao = new RegExp(termo, 'i')
-    // Pagina que o Yahoo devolve no lugar dos resultados quando recebe buscas
-    // demais em sequencia: "Ocorreram problemas temporarios na busca...".
-    cy.get('body').then(($body) => {
-      expect(
-        $body.text(),
-        'o Yahoo devolveu a pagina de problemas temporarios em vez dos resultados (oscilacao do site, nao seletor quebrado)'
-      ).not.to.match(/problemas tempor/i)
-    })
     this.resultados().should('have.length.greaterThan', 0)
     // should com funcao reexecuta ate passar ou estourar o timeout
     this.titulos().should(($titulos) => {

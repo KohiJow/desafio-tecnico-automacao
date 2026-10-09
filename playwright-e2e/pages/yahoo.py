@@ -7,6 +7,14 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 import config
 
 
+class YahooLimitouBuscas(Exception):
+    """
+    O Yahoo devolveu a pagina de "problemas temporarios" no lugar dos resultados.
+    Acontece quando ele limita as buscas de um IP, o que e comum nos runners
+    compartilhados do GitHub. E o site real que nao respondeu, nao a suite.
+    """
+
+
 class YahooBuscaPage:
     """Pagina inicial da busca do Yahoo BR: campo de busca e lista de sugestoes."""
 
@@ -59,8 +67,8 @@ class YahooResultadosPage:
         self.page = page
         self.resultados = page.locator("#web div.algo")
         self.titulos = self.resultados.locator("h3.title")
-        # Pagina que o Yahoo devolve no lugar dos resultados quando recebe buscas
-        # demais em sequencia: "Ocorreram problemas temporarios na busca...".
+        # Pagina que o Yahoo devolve no lugar dos resultados quando limita as buscas
+        # de um IP: "Ocorreram problemas temporarios na busca de paginas da Web".
         self.aviso_problema_temporario = page.get_by_text(
             re.compile("problemas tempor", re.IGNORECASE)
         ).first
@@ -69,9 +77,9 @@ class YahooResultadosPage:
         self.page.wait_for_url(re.compile(r"[?&]p=" + re.escape(termo), re.IGNORECASE))
         expect(self.resultados.first.or_(self.aviso_problema_temporario)).to_be_visible()
         if self.aviso_problema_temporario.is_visible():
-            raise AssertionError(
-                "O Yahoo devolveu a pagina de problemas temporarios em vez dos resultados: "
-                "oscilacao do site, nao seletor quebrado"
+            raise YahooLimitouBuscas(
+                "O Yahoo limitou as buscas deste IP e devolveu a pagina de problemas "
+                "temporarios no lugar dos resultados: o site nao respondeu, a suite nao quebrou"
             )
         return self
 

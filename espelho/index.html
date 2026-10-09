@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Busca (espelho local)</title>
+<link rel="stylesheet" href="espelho.css">
+</head>
+<body>
+<!-- Espelho minimo da busca do Yahoo BR: so a estrutura que os page objects
+     usam (campo name="p", lista ul.sa-list li.sa-item e o aviso de privacidade
+     num iframe), para a suite rodar no CI sem depender do site real. -->
+<main class="busca">
+  <form action="search.html" method="get" autocomplete="off">
+    <input type="text" name="p" placeholder="Buscar na Web" aria-label="Buscar na Web">
+  </form>
+  <ul class="sa-list" hidden></ul>
+</main>
+<iframe id="guce-inline-consent-iframe" src="aviso.html" title="Aviso de privacidade"></iframe>
+<script src="busca.js"></script>
+</body>
+</html>
