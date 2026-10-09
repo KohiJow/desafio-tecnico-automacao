@@ -2,7 +2,8 @@
 
 Resolucao de um desafio tecnico de automacao de testes. Duas atividades, a
 primeira feita nas duas ferramentas, para comparar a abordagem de cada uma.
-As duas suites rodam no GitHub Actions a cada push.
+As duas suites rodam no GitHub Actions: a cada push contra um espelho local do
+fluxo, e toda semana contra os sites reais.
 
 ## As atividades
 
@@ -31,11 +32,12 @@ playwright-e2e/
   tests/
     test_busca_yahoo.py            atividade 1
     test_termos_uol.py             atividade 2
+espelho/                           copia minima do fluxo do Yahoo e da pagina da UOL, para o CI
 cypress-e2e/
   cypress.config.js                baseUrl, timeouts e retries
   cypress/pages/                   YahooBuscaPage.js e YahooResultadosPage.js
   cypress/e2e/busca-yahoo.cy.js    atividade 1 em Cypress
-.github/workflows/testes.yml       roda as duas suites
+.github/workflows/testes.yml       roda as duas suites no espelho e no site real
 ```
 
 ## Rodando o Playwright
@@ -63,8 +65,13 @@ UOL_TERMOS_URL=http://localhost:8000/termos.html pytest tests/test_termos_uol.py
 ```
 
 A ultima linha mostra a sobrescrita de URL por variavel de ambiente
-(`YAHOO_BASE_URL` e `UOL_TERMOS_URL`), util para apontar a suite para um stub
-local sem mexer no codigo.
+(`YAHOO_BASE_URL` e `UOL_TERMOS_URL`), que e como a suite roda contra o espelho
+local, igual ao CI faz a cada push:
+
+```bash
+python3 -m http.server 8080 --directory ../espelho &
+YAHOO_BASE_URL=http://127.0.0.1:8080 UOL_TERMOS_URL=http://127.0.0.1:8080/uol-termos.html pytest
+```
 
 ## Rodando o Cypress
 
@@ -77,8 +84,9 @@ npm run cy:run:ci    # headless, mais o XML JUnit em cypress/results/ (usado no 
 ```
 
 Em falha no modo headless o Cypress salva screenshot em `cypress/screenshots/`,
-um por tentativa. A `baseUrl` pode ser trocada por variavel de ambiente:
-`CYPRESS_BASE_URL=https://... npm run cy:run`.
+um por tentativa. A `baseUrl` pode ser trocada por variavel de ambiente, que e
+como ele roda contra o espelho local:
+`CYPRESS_BASE_URL=http://127.0.0.1:8080 npm run cy:run`.
 
 ## Page Objects
 
@@ -146,34 +154,51 @@ a espera pelo JSON-LD da UOL, 5s para o aviso de privacidade, todos em
 terceiro.
 
 **Retries.** Busca em site externo oscila: ranking, sugestoes e latencia mudam
-de uma execucao para outra. No CI o pytest roda com `--reruns 2 --reruns-delay 5`
-(plugin `pytest-rerunfailures`) e o Cypress com `retries.runMode = 2`. Fora do
-CI o Playwright roda sem retry por padrao, para a oscilacao aparecer, e no
-`cypress open` o retry e zero. Quando o Yahoo recebe buscas demais em
-sequencia (varios runs seguidos no CI, por exemplo) ele devolve uma pagina de
-"problemas temporarios" no lugar dos resultados; as duas suites reconhecem
-essa pagina e falham com uma mensagem que diz isso, para a falha nao parecer
-seletor quebrado.
+de uma execucao para outra. Contra o site real o pytest roda com
+`--reruns 2 --reruns-delay 20` (plugin `pytest-rerunfailures`) e o Cypress com
+`retries.runMode = 2`. Fora do CI o Playwright roda sem retry por padrao, para
+a oscilacao aparecer, e no `cypress open` o retry e zero.
+
+**Limite de buscas do Yahoo.** O Yahoo limita as buscas de IPs que buscam
+demais e, no lugar dos resultados, devolve "Ocorreram problemas temporarios na
+busca de paginas da Web". Os runners do GitHub usam IPs compartilhados por
+muita gente, entao isso acontece no CI sem nenhum excesso deste repositorio: num
+mesmo run, o job do Playwright pegou a pagina nas tres tentativas enquanto o do
+Cypress, em outra maquina, passou. Retry nao resolve, porque o limite e do IP. As
+duas suites reconhecem a pagina e marcam o teste como pulado, com o motivo no
+relatorio, do mesmo jeito que o 403 da UOL: e o site que nao respondeu, nao a
+suite que quebrou.
+
+**Espelho local.** `espelho/` tem uma copia minima do fluxo: a pagina de busca
+com o campo `name="p"`, a lista de sugestoes e o aviso de privacidade num
+iframe, a pagina de resultados com `#web div.algo h3.title`, e a pagina de
+termos da UOL que injeta o JSON-LD com atraso de proposito, para provar que a
+espera e por condicao. Nao e o Yahoo: e o contrato que os page objects esperam
+dele. A cada push as duas suites rodam ali, sem rede externa, e o resultado e
+deterministico. Mudanca de layout dos sites reais e pega pela execucao semanal.
 
 ## CI
 
-`.github/workflows/testes.yml` roda dois jobs independentes a cada push na
-`main`, em pull request e por disparo manual. Commit que so mexe em texto
-(`*.md` e `docs/`) nao dispara os testes, e um push novo cancela o run anterior
-do mesmo ramo: cada execucao faz buscas reais, e uma sequencia de pushes
-seguidos ja foi o bastante para o Yahoo devolver a pagina de "problemas
-temporarios" e deixar dois runs vermelhos sem nenhum defeito no codigo. Um job instala o Chromium do
-Playwright e roda o `pytest` com retries; o outro usa a action oficial do
-Cypress e roda `npm run cy:run:ci`. Os dois publicam artefatos: o relatorio
-HTML do pytest e o JUnit do Cypress com os screenshots de falha. Cada job tem
-limite de 15 minutos, para site travado nao deixar o run pendurado. Como as
-suites batem em site real, uma execucao vermelha pode ser oscilacao do site: o
-retry reduz isso, nao elimina. No runner do GitHub os dois testes do Playwright
-passam, inclusive o da UOL, que com o headless shell era pulado por 403.
+`.github/workflows/testes.yml` tem dois modos:
+
+- **Espelho local**, a cada push na `main`, em pull request e por disparo
+  manual: sobe `espelho/` com o `http.server` do Python no proprio runner e roda
+  as duas suites contra ele. Vermelho aqui e defeito de verdade.
+- **Site real**, toda segunda as 12h UTC e por disparo manual: as mesmas suites
+  contra o Yahoo e a UOL, com retries. Serve para pegar mudanca de layout dos
+  sites; limite de buscas do Yahoo aparece como teste pulado.
+
+Commit que so mexe em texto (`*.md` e `docs/`) nao dispara os testes, e um push
+novo cancela o run anterior do mesmo ramo. Cada job publica artefatos: o
+relatorio HTML do pytest e o JUnit do Cypress com os screenshots de falha, e tem
+limite de tempo, para site travado nao deixar o run pendurado. No runner do
+GitHub os dois testes do Playwright passam contra o site real, inclusive o da
+UOL, que com o headless shell era pulado por 403.
 
 ## Limitacoes conhecidas
 
-Os dois testes batem em sites reais, sem mock. Mudanca de layout do Yahoo ou da
-UOL quebra os seletores, que ficam concentrados em `pages/`. A atividade 2 so
+O espelho local cobre o contrato que os page objects esperam, nao o site real:
+mudanca de layout do Yahoo ou da UOL so aparece na execucao semanal (ou num
+disparo manual), e quebra os seletores, que ficam concentrados em `pages/`. A atividade 2 so
 existe em Playwright: a UOL recusa o Electron do Cypress com 403. Os bloqueios
 a navegador headless e o tratamento do 403 estao descritos acima.

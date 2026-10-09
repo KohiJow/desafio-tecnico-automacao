@@ -1,23 +1,106 @@
 name: testes e2e
 
+# Dois modos, com motivo diferente cada um:
+# - espelho local (push, pull request, disparo manual): as duas suites rodam
+#   contra uma copia minima do fluxo em espelho/, servida no proprio runner.
+#   Resultado deterministico: vermelho aqui e defeito de verdade.
+# - site real (toda segunda e por disparo manual): as mesmas suites contra o
+#   Yahoo e a UOL de verdade, para pegar mudanca de layout dos sites. O Yahoo
+#   limita as buscas dos IPs compartilhados do GitHub; quando isso acontece o
+#   teste aparece como pulado, com o motivo, e nao como falha.
 on:
   push:
     branches: [main]
-    # commit so de texto nao muda o comportamento dos testes; rodar mesmo assim
-    # gasta busca no Yahoo, que limita quem busca demais em sequencia
     paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
     paths-ignore: ["**/*.md", "docs/**"]
+  schedule:
+    - cron: "0 12 * * 1"
   workflow_dispatch:
 
-# push novo cancela o run anterior do mesmo ramo em vez de empilhar buscas
+# push novo cancela o run anterior do mesmo ramo
 concurrency:
-  group: testes-${{ github.ref }}
+  group: testes-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+env:
+  ESPELHO: http://127.0.0.1:8080
+
 jobs:
-  playwright:
-    name: playwright (python)
+  playwright-espelho:
+    name: playwright (python) no espelho local
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: playwright-e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: playwright-e2e/requirements.txt
+
+      - name: instala dependencias
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: sobe o espelho local
+        working-directory: .
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory espelho > /tmp/espelho.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf "$ESPELHO/" > /dev/null && exit 0; sleep 1; done
+          cat /tmp/espelho.log; exit 1
+
+      - name: roda a suite
+        env:
+          YAHOO_BASE_URL: ${{ env.ESPELHO }}
+          UOL_TERMOS_URL: ${{ env.ESPELHO }}/uol-termos.html
+        run: pytest -rs
+
+      - name: publica o relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-playwright-espelho
+          path: playwright-e2e/reports/
+          if-no-files-found: ignore
+
+  cypress-espelho:
+    name: cypress no espelho local
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: roda a suite
+        uses: cypress-io/github-action@v6
+        env:
+          CYPRESS_BASE_URL: ${{ env.ESPELHO }}
+        with:
+          working-directory: cypress-e2e
+          start: python3 -m http.server 8080 --bind 127.0.0.1 --directory ../espelho
+          wait-on: ${{ env.ESPELHO }}
+          command: npm run cy:run:ci
+
+      - name: publica relatorio e screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-cypress-espelho
+          path: |
+            cypress-e2e/cypress/results/
+            cypress-e2e/cypress/screenshots/
+          if-no-files-found: ignore
+
+  playwright-site-real:
+    name: playwright (python) no site real
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Site externo pode travar a resposta: o job nao fica pendurado esperando
     timeout-minutes: 15
@@ -38,20 +121,21 @@ jobs:
           pip install -r requirements.txt
           playwright install --with-deps chromium
 
-      # Busca em site externo oscila: cada teste que falhar e refeito ate duas vezes
+      # Oscilacao do site (ranking, sugestoes, latencia): refaz ate duas vezes
       - name: roda a suite
-        run: pytest --reruns 2 --reruns-delay 5
+        run: pytest -rs --reruns 2 --reruns-delay 20
 
       - name: publica o relatorio
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: relatorio-playwright
+          name: relatorio-playwright-site-real
           path: playwright-e2e/reports/
           if-no-files-found: ignore
 
-  cypress:
-    name: cypress
+  cypress-site-real:
+    name: cypress no site real
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -68,7 +152,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: relatorio-cypress
+          name: relatorio-cypress-site-real
           path: |
             cypress-e2e/cypress/results/
             cypress-e2e/cypress/screenshots/
