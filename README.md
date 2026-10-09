@@ -93,8 +93,9 @@ encadear. Quando o Yahoo mudar o layout, o ajuste fica num unico lugar por suite
 
 **Configuracao num lugar so.** No Playwright, `config.py` guarda URLs, canal
 do navegador, locale, fuso e timeouts; o `conftest.py` aplica tudo ao
-navegador, ao contexto, a cada pagina e ao `expect()`. No Cypress, `cypress.config.js` guarda `baseUrl`,
-timeouts e retries. Nenhum teste tem URL ou numero de timeout embutido.
+navegador, ao contexto, a cada pagina e ao `expect()`. No Cypress,
+`cypress.config.js` guarda `baseUrl`, timeouts e retries. Nenhum teste tem URL
+ou numero de timeout embutido.
 
 **Sem sleep fixo.** Nenhum teste usa espera por tempo. No Playwright a espera e
 por condicao (`expect`, `wait_for_url`, `wait_for_function`); no Cypress e o
@@ -140,9 +141,9 @@ regular com flag de ignorar caso, nas duas suites.
 
 **Timeouts.** Playwright: 10s para acao e `expect`, 30s para navegacao e para
 a espera pelo JSON-LD da UOL, 5s para o aviso de privacidade, todos em
-`config.py`. Cypress: 10s por comando e 60s
-para load da pagina, em `cypress.config.js`. O padrao das ferramentas (5s e 4s)
-e curto para site de terceiro.
+`config.py`. Cypress: 10s por comando e 60s para load da pagina, em
+`cypress.config.js`. O padrao das ferramentas (5s e 4s) e curto para site de
+terceiro.
 
 **Retries.** Busca em site externo oscila: ranking, sugestoes e latencia mudam
 de uma execucao para outra. No CI o pytest roda com `--reruns 2 --reruns-delay 5`
