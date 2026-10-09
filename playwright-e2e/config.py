@@ -14,6 +14,11 @@ UOL_TERMOS_URL = os.environ.get(
 LOCALE = "pt-BR"
 TIMEZONE = "America/Sao_Paulo"
 
+# Por padrao o Playwright abre o "headless shell", um Chromium reduzido que se
+# anuncia como HeadlessChrome nos client hints (sec-ch-ua); a UOL responde 403
+# a ele. O canal "chromium" abre o Chromium completo em modo headless novo.
+CHROMIUM_CHANNEL = "chromium"
+
 # Timeouts em milissegundos. Sites de terceiro respondem mais devagar que
 # uma aplicacao local, por isso os valores sao maiores que o padrao do Playwright.
 TIMEOUT_ACAO = 10_000  # expect(), click, fill

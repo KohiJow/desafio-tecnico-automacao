@@ -10,9 +10,10 @@ def test_uol_termos_data_atualizacao(page: Page):
 
     status = termos.abrir()
     if status == 403:
-        # A UOL bloqueia IP de datacenter (CI, servidor). Nao e defeito da pagina,
-        # entao o teste e pulado com o motivo em vez de falhar como se fosse.
-        pytest.skip("UOL devolveu HTTP 403 (Access Denied): bloqueio de IP, rode de uma maquina local")
+        # A UOL bloqueia navegador que ela reconhece como automatizado e algumas
+        # redes. Nao e defeito da pagina, entao o teste e pulado com o motivo em
+        # vez de falhar como se fosse.
+        pytest.skip("UOL devolveu HTTP 403 (Access Denied): a pagina bloqueou este navegador ou esta rede")
     assert status == 200, f"Pagina de termos da UOL respondeu HTTP {status}"
 
     data_atualizacao = termos.data_atualizacao()

@@ -4,11 +4,22 @@ from playwright.sync_api import Browser, expect
 import config
 
 
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args, browser_name):
+    """
+    Abre o Chromium completo em vez do headless shell (ver config.CHROMIUM_CHANNEL).
+    Um --browser-channel passado na linha de comando continua valendo.
+    """
+    if browser_name != "chromium":
+        return browser_type_launch_args
+    return {"channel": config.CHROMIUM_CHANNEL, **browser_type_launch_args}
+
+
 def _user_agent_sem_marca_headless(browser: Browser) -> str:
     """
-    O Yahoo responde HTTP 500 com corpo vazio quando o user agent traz
-    "HeadlessChrome". Le o user agent real do navegador e troca so essa marca,
-    mantendo versao e sistema coerentes com o binario que esta rodando.
+    O Yahoo responde HTTP 500 com corpo vazio, e a UOL 403, quando o user agent
+    traz "HeadlessChrome". Le o user agent real do navegador e troca so essa
+    marca, mantendo versao e sistema coerentes com o binario que esta rodando.
     """
     pagina = browser.new_page()
     try:
