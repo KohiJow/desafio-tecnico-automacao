@@ -18,10 +18,10 @@ reports/
 
 # Node / Cypress
 node_modules/
-cypress/screenshots/
-cypress/videos/
-cypress/downloads/
-cypress/results/
+**/cypress/screenshots/
+**/cypress/videos/
+**/cypress/downloads/
+**/cypress/results/
 
 # IDEs
 .vscode/
